@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; connect-src *;">
+    <title>PriceWise — 电商智能定价决策引擎</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- ECharts 5.x CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+    <!-- ========== 登录遮罩 ========== -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>📊 PriceWise</h1>
+                <p>电商智能定价决策引擎</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">用户名</label>
+                    <input type="text" id="username" placeholder="admin / analyst" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="password">密码</label>
+                    <input type="password" id="password" placeholder="admin123 / analyst123" required autocomplete="current-password">
+                </div>
+                <div id="login-error" class="login-error hidden"></div>
+                <button type="submit" class="btn-login">🔐 登 录</button>
+            </form>
+            <p class="login-hint">默认管理员: admin / admin123 | 分析师: analyst / analyst123</p>
+        </div>
+    </div>
+
+    <!-- ========== 主界面 ========== -->
+    <div id="app" class="app hidden">
+        <!-- 顶部导航栏 -->
+        <header class="header">
+            <div class="header-left">
+                <h1>📊 PriceWise</h1>
+                <span class="header-subtitle">电商智能定价决策引擎 v1.0</span>
+            </div>
+            <div class="header-right">
+                <span class="header-user" id="header-user"></span>
+                <button id="btn-logout" class="btn-logout">退出登录</button>
+            </div>
+        </header>
+
+        <!-- 侧边导航 -->
+        <nav class="sidebar">
+            <div class="nav-item active" data-panel="elasticity">
+                <span class="nav-icon">📈</span>
+                <span class="nav-label">价格弹性分析</span>
+            </div>
+            <div class="nav-item" data-panel="competitor">
+                <span class="nav-icon">🎯</span>
+                <span class="nav-label">竞品生态位画像</span>
+            </div>
+            <div class="nav-item" data-panel="boston">
+                <span class="nav-icon">🧭</span>
+                <span class="nav-label">波士顿矩阵诊断</span>
+            </div>
+            <div class="nav-item" data-panel="whatif">
+                <span class="nav-icon">⭐</span>
+                <span class="nav-label">What-If 调价模拟器</span>
+            </div>
+            <div class="nav-item" data-panel="health">
+                <span class="nav-icon">💊</span>
+                <span class="nav-label">品类健康度评分</span>
+            </div>
+        </nav>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 面板1: 价格弹性分析 -->
+            <section id="panel-elasticity" class="panel active">
+                <h2 class="panel-title">📈 价格弹性分析引擎</h2>
+                <div class="panel-grid">
+                    <div class="card card-span-2">
+                        <div class="card-header">品类弹性系数柱状图（|β| 越大=越敏感）</div>
+                        <div class="card-body"><div id="chart-elasticity-bar" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">弹性等级分布</div>
+                        <div class="card-body"><div id="chart-elasticity-pie" class="chart"></div></div>
+                    </div>
+                    <div class="card card-span-2">
+                        <div class="card-header">价格-销量散点图（含拟合曲线）</div>
+                        <div class="card-body"><div id="chart-price-scatter" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">弹性策略速查</div>
+                        <div class="card-body scrollable" id="elasticity-strategy-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 面板2: 竞品生态位画像 -->
+            <section id="panel-competitor" class="panel">
+                <h2 class="panel-title">🎯 竞品价格生态位画像</h2>
+                <div class="panel-grid">
+                    <div class="card card-span-2">
+                        <div class="card-header">3D 生态位气泡图（价格 × 评分 × 销量）</div>
+                        <div class="card-body"><div id="chart-niche-3d" class="chart chart-large"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">品类选择</div>
+                        <div class="card-body">
+                            <select id="select-niche-category" class="form-select">
+                                <option value="">全部品类</option>
+                            </select>
+                            <div id="chart-niche-dist" class="chart" style="height:400px"></div>
+                        </div>
+                    </div>
+                    <div class="card card-span-3">
+                        <div class="card-header">竞争格局概览表</div>
+                        <div class="card-body scrollable">
+                            <table class="data-table" id="table-landscape">
+                                <thead><tr>
+                                    <th>品类</th><th>卖家数</th><th>竞争强度</th>
+                                    <th>高质高价</th><th>性价比</th><th>低价冲量</th>
+                                    <th>红海</th><th>劣势</th><th>机会指数</th>
+                                </tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 面板3: 波士顿矩阵 -->
+            <section id="panel-boston" class="panel">
+                <h2 class="panel-title">🧭 品类波士顿矩阵诊断</h2>
+                <div class="panel-grid">
+                    <div class="card card-span-2">
+                        <div class="card-header">波士顿矩阵四象限（气泡大小=总营收）</div>
+                        <div class="card-body"><div id="chart-boston-matrix" class="chart chart-large"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">象限分布统计</div>
+                        <div class="card-body"><div id="chart-boston-pie" class="chart"></div></div>
+                    </div>
+                    <div class="card card-span-2">
+                        <div class="card-header">品类雷达图对比 (Top 5)</div>
+                        <div class="card-body"><div id="chart-boston-radar" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">象限策略速查</div>
+                        <div class="card-body scrollable" id="boston-strategy-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 面板4: What-If 调价模拟器 ⭐ -->
+            <section id="panel-whatif" class="panel">
+                <h2 class="panel-title">⭐ What-If 调价模拟器</h2>
+                <div class="panel-grid">
+                    <!-- 控制面板 -->
+                    <div class="card card-span-3">
+                        <div class="card-header">调价方案设定</div>
+                        <div class="card-body">
+                            <div class="whatif-controls">
+                                <div class="control-group">
+                                    <label>选择品类</label>
+                                    <select id="whatif-category" class="form-select"></select>
+                                </div>
+                                <div class="control-group">
+                                    <label>调价幅度</label>
+                                    <div class="slider-group">
+                                        <input type="range" id="whatif-slider" min="-30" max="30" value="0" step="1">
+                                        <span id="whatif-pct" class="whatif-pct">0%</span>
+                                    </div>
+                                </div>
+                                <div class="control-group">
+                                    <button id="btn-simulate" class="btn-primary">🎯 执行模拟</button>
+                                    <button id="btn-batch" class="btn-secondary">📊 批量场景对比</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 模拟结果 -->
+                    <div class="card card-span-2">
+                        <div class="card-header">利润影响瀑布图</div>
+                        <div class="card-body"><div id="chart-waterfall" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">决策建议</div>
+                        <div class="card-body" id="whatif-recommendation">
+                            <p class="placeholder-text">请选择品类并设定调价方案，点击"执行模拟"查看结果。</p>
+                        </div>
+                    </div>
+                    <!-- 批量场景对比表 -->
+                    <div class="card card-span-3">
+                        <div class="card-header">批量场景对比 (调价幅度 -20% ~ +20%)</div>
+                        <div class="card-body scrollable">
+                            <table class="data-table" id="table-scenarios">
+                                <thead><tr>
+                                    <th>调价幅度</th><th>新价格</th><th>预测销量</th>
+                                    <th>预测营收</th><th>营收变化</th><th>建议</th>
+                                </tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 面板5: 品类健康度 -->
+            <section id="panel-health" class="panel">
+                <h2 class="panel-title">💊 品类健康度综合评分</h2>
+                <div class="panel-grid">
+                    <div class="card card-span-2">
+                        <div class="card-header">健康度评分柱状图 (0-100)</div>
+                        <div class="card-body"><div id="chart-health-bar" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">健康等级分布</div>
+                        <div class="card-body"><div id="chart-health-pie" class="chart"></div></div>
+                    </div>
+                    <div class="card card-span-2">
+                        <div class="card-header">Top 5 健康品类雷达图</div>
+                        <div class="card-body"><div id="chart-health-radar" class="chart"></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">仪表盘汇总</div>
+                        <div class="card-body" id="health-summary"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ========== JS 模块 ========== -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/elasticity.js"></script>
+    <script src="js/competitor.js"></script>
+    <script src="js/boston-matrix.js"></script>
+    <script src="js/what-if.js"></script>
+    <script src="js/health.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+# ============================================================
+# Smart Pricing Engine — Spring Boot API Dockerfile
+# ============================================================
+# 多阶段构建：Maven 编译 → JRE 运行
+# ============================================================
+
+# ── Stage 1: Maven 编译 ──
+FROM maven:3.9-eclipse-temurin-17 AS builder
+
+WORKDIR /build
+COPY pom.xml .
+# 利用 Docker 缓存：先下载依赖
+RUN mvn dependency:go-offline -B
+COPY src/ src/
+RUN mvn clean package -DskipTests -B
+
+# ── Stage 2: JRE 运行 ──
+FROM eclipse-temurin:17-jre-alpine
+
+# 安全：以非 root 用户运行
+RUN addgroup -g 1000 pricing && \
+    adduser -u 1000 -G pricing -s /bin/sh -D pricing
+
+WORKDIR /app
+COPY --from=builder /build/target/*.jar app.jar
+
+# 安全：限制 JVM 权限
+RUN chown -R pricing:pricing /app
+
+USER pricing
+
+EXPOSE 8080
+
+# JVM 参数优化
+ENTRYPOINT ["java", \
+    "-XX:+UseG1GC", \
+    "-XX:MaxRAMPercentage=75.0", \
+    "-XX:+ExitOnOutOfMemoryError", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-jar", "app.jar"]
